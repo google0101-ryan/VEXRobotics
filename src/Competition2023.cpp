@@ -53,6 +53,11 @@ void Competition2023::Initialize()
     catapult->set_brake_mode(pros::motor_brake_mode_e_t::E_MOTOR_BRAKE_HOLD);
     catapult->move_absolute(0.0, 100);
 
+    if (errno != PROS_SUCCESS)
+    {
+        printf("ERROR Initializing one or more motors!\n");
+    }
+
     limitSwitch = new pros::ADIDigitalIn('E');
 }
 
