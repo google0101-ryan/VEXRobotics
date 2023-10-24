@@ -35,7 +35,7 @@ void Competition2023::Initialize()
     lcd->AddErrorText("Test text: 0x%x", 0xAAAAAAAA);
 
     vision = new pros::Vision(VISION_SYSTEM_PORT);
-    if (errno == PROS_ERR)
+    if (errno != PROS_SUCCESS)
     {
         Error("Cannot configure vision system on port %d: %s\n", VISION_SYSTEM_PORT, strerror(errno));
     }
