@@ -15,7 +15,9 @@ private:
 
     pros::Motor* left[3], *right[3];
     pros::Motor* catapult;
+    pros::Motor* intake;
     pros::ADIDigitalIn* limitSwitch;
+    pros::ADIDigitalOut* pneumaticController;
 public:
     virtual void Initialize();
     virtual void DoAutonomous();
@@ -37,7 +39,7 @@ void Competition2023::Initialize()
     vision = new pros::Vision(VISION_SYSTEM_PORT);
     if (errno != PROS_SUCCESS)
     {
-        Error("Cannot configure vision system on port %d: %s\n", VISION_SYSTEM_PORT, strerror(errno));
+        printf("Cannot configure vision system on port %d: %s\n", VISION_SYSTEM_PORT, strerror(errno));
     }
 
     left[0] = new pros::Motor(1);
@@ -52,6 +54,7 @@ void Competition2023::Initialize()
     catapult = new pros::Motor(14, MOTOR_GEARSET_36, true);
     catapult->set_brake_mode(pros::motor_brake_mode_e_t::E_MOTOR_BRAKE_HOLD);
     catapult->move_absolute(0.0, 100);
+    intake = new pros::Motor(16);
 
     if (errno != PROS_SUCCESS)
     {
@@ -59,6 +62,7 @@ void Competition2023::Initialize()
     }
 
     limitSwitch = new pros::ADIDigitalIn('E');
+    pneumaticController = new pros::ADIDigitalOut('G');
 }
 
 void Competition2023::DoAutonomous()
@@ -89,14 +93,38 @@ void Competition2023::DoOpControl()
 
         if (catapultIsMoving && limitSwitch->get_value())
         {
-            catapult->brake();
+            catapult->move_voltage(0);
             catapultIsMoving = false;
         }
 
         if (controller->get_digital(DIGITAL_A) && !catapultIsMoving)
         {
-            catapult->move_velocity(100);
+            catapult->move_voltage(12000);
             catapultIsMoving = true;
+        }
+
+        if (controller->get_digital(DIGITAL_UP))
+        {
+            pneumaticController->set_value(HIGH);
+        }
+        else if (controller->get_digital(DIGITAL_DOWN))
+        {
+            pneumaticController->set_value(LOW);
+        }
+
+        if (controller->get_digital(DIGITAL_L2))
+        {
+            intake->set_reversed(false);
+            intake->move_voltage(12000);
+        }
+        else if (controller->get_digital(DIGITAL_L1))
+        {
+            intake->set_reversed(true);
+            intake->move_voltage(12000);
+        }
+        else
+        {
+            intake->brake();
         }
 
         pros::delay(2);
