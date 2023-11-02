@@ -2,6 +2,7 @@
 #include "main.h"
 #include "lcd.h"
 #include "pros/vision.hpp"
+#include "ImuWrapper.h"
 
 // Competition class for 2023
 // Use this as an example, do not include in your final project
@@ -17,7 +18,8 @@ private:
     pros::Motor* catapult;
     pros::Motor* intake;
     pros::ADIDigitalIn* limitSwitch;
-    pros::ADIDigitalOut* pneumaticController;
+    pros::ADIDigitalOut* pneumaticController, *leftWing;
+    ImuWrapper* imu;
 public:
     virtual void Initialize();
     virtual void DoAutonomous();
@@ -42,16 +44,13 @@ void Competition2023::Initialize()
         printf("Cannot configure vision system on port %d: %s\n", VISION_SYSTEM_PORT, strerror(errno));
     }
 
-    left[0] = new pros::Motor(1);
-    left[1] = new pros::Motor(2);
-    left[2] = new pros::Motor(3);
-    left[2]->set_reversed(true);
-    right[0] = new pros::Motor(4);
-    right[0]->set_reversed(true);
-    right[1] = new pros::Motor(5);
-    right[1]->set_reversed(true);
-    right[2] = new pros::Motor(6);
-    catapult = new pros::Motor(14, MOTOR_GEARSET_36, true);
+    left[0] = new pros::Motor(18);
+    left[1] = new pros::Motor(19, true);
+    left[2] = new pros::Motor(20, true);
+    right[0] = new pros::Motor(11);
+    right[1] = new pros::Motor(12, true);
+    right[2] = new pros::Motor(13);
+    catapult = new pros::Motor(15, MOTOR_GEARSET_36, true);
     catapult->set_brake_mode(pros::motor_brake_mode_e_t::E_MOTOR_BRAKE_HOLD);
     catapult->move_absolute(0.0, 100);
     intake = new pros::Motor(16);
@@ -63,17 +62,129 @@ void Competition2023::Initialize()
 
     limitSwitch = new pros::ADIDigitalIn('E');
     pneumaticController = new pros::ADIDigitalOut('G');
+    leftWing = new pros::ADIDigitalOut('H');
+
+    imu = new ImuWrapper(17, left, right, 3);
 }
+
+static bool isNextToGoal = true;
 
 void Competition2023::DoAutonomous()
 {
-    while (true)
+    if (isNextToGoal)
     {
-        pros::delay(2);
+        // Ram preloaded triball into goal
+        for (int i = 0; i < 3; i++)
+        {
+            left[i]->move(127);
+            right[i]->move(127);
+        }
+        pros::delay(450);
+        for (int i = 0; i < 3; i++)
+        {
+            left[i]->brake();
+            right[i]->brake();
+        }
+
+        imu->TurnLeft(25);
+
+        for (int i = 0; i < 3; i++)
+        {
+            left[i]->move(127);
+            right[i]->move(127);
+        }
+        pros::delay(550);
+        for (int i = 0; i < 3; i++)
+        {
+            left[i]->brake();
+            right[i]->brake();
+        }
     }
+    else
+    {
+        while (!limitSwitch->get_value())
+        {
+            catapult->move(127);
+        }
+
+        catapult->move(0);
+
+        // Move forward to align the wing with the triball
+        for (int i = 0; i < 3; i++)
+        {
+            left[i]->move(127);
+            right[i]->move(127);
+        }
+        pros::delay(150);
+        for (int i = 0; i < 3; i++)
+        {
+            left[i]->brake();
+            right[i]->brake();
+        }
+
+        pros::delay(1000);
+
+        // Lower left wing
+        leftWing->set_value(HIGH);
+
+        imu->TurnRight(90);
+
+        leftWing->set_value(LOW);
+
+        for (int i = 0; i < 3; i++)
+        {
+            left[i]->move(127);
+            right[i]->move(127);
+        }
+        pros::delay(560);
+        for (int i = 0; i < 3; i++)
+        {
+            left[i]->brake();
+            right[i]->brake();
+        }
+
+        imu->TurnLeft(135);
+
+        for (int i = 0; i < 3; i++)
+        {
+            left[i]->move(-127);
+            right[i]->move(-127);
+        }
+        pros::delay(80);
+        for (int i = 0; i < 3; i++)
+        {
+            left[i]->brake();
+            right[i]->brake();
+        }
+
+        leftWing->set_value(HIGH);
+
+        imu->TurnLeft(20);
+
+        for (int i = 0; i < 3; i++)
+        {
+            left[i]->move(-64);
+            right[i]->move(-64);
+        }
+        pros::delay(300);
+        for (int i = 0; i < 3; i++)
+        {
+            left[i]->brake();
+            right[i]->brake();
+        }
+
+        pros::delay(1000);
+
+        leftWing->set_value(LOW);
+    }
+
+    pros::delay(2);
 }
 
 bool catapultIsMoving = false;
+// When X is pressed, toggle fling mode
+// This is where we continously lower and fling the catapult until fling mode is disabled
+bool isFlinging = false;
 
 void Competition2023::DoOpControl()
 {
@@ -83,8 +194,8 @@ void Competition2023::DoOpControl()
         int fwd =  controller->get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
         int turn = controller->get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
 
-        int left_ = fwd - turn;
-        int right_ = fwd + turn;
+        int left_ = fwd + turn;
+        int right_ = fwd - turn;
 
         for (int i = 0; i < 3; i++)
             left[i]->move(left_);
@@ -93,14 +204,37 @@ void Competition2023::DoOpControl()
 
         if (catapultIsMoving && limitSwitch->get_value())
         {
-            catapult->move_voltage(0);
+            catapult->move_velocity(0);
             catapultIsMoving = false;
+        }
+
+        if (controller->get_digital(DIGITAL_Y))
+        {
+            catapult->move(95);
+            pros::delay(250);
+            catapult->move(0);
         }
 
         if (controller->get_digital(DIGITAL_A) && !catapultIsMoving)
         {
-            catapult->move_voltage(12000);
+            catapult->move_velocity(100);
             catapultIsMoving = true;
+        }
+
+        if (controller->get_digital(DIGITAL_X))
+        {
+            isFlinging = !isFlinging;
+            if (isFlinging)
+                catapult->move(95);
+            else
+                catapult->move(0);
+        }
+
+        if (controller->get_digital(DIGITAL_B))
+        {
+            isFlinging = false;
+            catapultIsMoving = false;
+            catapult->move(0);
         }
 
         if (controller->get_digital(DIGITAL_UP))
@@ -110,6 +244,15 @@ void Competition2023::DoOpControl()
         else if (controller->get_digital(DIGITAL_DOWN))
         {
             pneumaticController->set_value(LOW);
+        }
+        
+        if (controller->get_digital(DIGITAL_RIGHT))
+        {
+            leftWing->set_value(HIGH);
+        }
+        else if (controller->get_digital(DIGITAL_LEFT))
+        {
+            leftWing->set_value(LOW);
         }
 
         if (controller->get_digital(DIGITAL_L2))
