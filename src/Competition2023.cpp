@@ -3,6 +3,7 @@
 #include "lcd.h"
 #include "pros/vision.hpp"
 #include "ImuWrapper.h"
+#include "lemlib/api.hpp"
 
 // Competition class for 2023
 // Use this as an example, do not include in your final project
@@ -18,9 +19,14 @@ private:
     pros::Motor* catapult;
     pros::Motor* intake;
     pros::ADIDigitalIn* limitSwitch;
-    pros::ADIDigitalOut* pneumaticController, *leftWing;
-    ImuWrapper* imu;
+    pros::ADIDigitalOut* climbController, *leftWingController;
+    pros::Imu* imu;
+    pros::MotorGroup* leftGroup, *rightGroup;
+    lemlib::Drivetrain_t* driveTrain;
+    lemlib::OdomSensors_t odom;
+    lemlib::ChassisController_t lateralController, angularController;
 public:
+    lemlib::Chassis* chassis;
     virtual void Initialize();
     virtual void DoAutonomous();
     virtual void DoOpControl();
@@ -51,9 +57,19 @@ void Competition2023::Initialize()
     right[1] = new pros::Motor(12, true);
     right[2] = new pros::Motor(13);
     catapult = new pros::Motor(15, MOTOR_GEARSET_36, true);
-    catapult->set_brake_mode(pros::motor_brake_mode_e_t::E_MOTOR_BRAKE_HOLD);
+    catapult->set_brake_mode(pros::motor_brake_mode_e_t::E_MOTOR_BRAKE_COAST);
     catapult->move_absolute(0.0, 100);
     intake = new pros::Motor(16);
+
+    leftGroup = new pros::MotorGroup({*left[0], *left[1], *left[2]});
+    rightGroup = new pros::MotorGroup({*right[0], *right[1], *right[2]});
+
+    driveTrain = new lemlib::Drivetrain_t;
+    driveTrain->leftMotors = leftGroup;
+    driveTrain->rightMotors = rightGroup;
+    driveTrain->rpm = 360;
+    driveTrain->trackWidth = 10;
+    driveTrain->wheelDiameter = 3.125;
 
     if (errno != PROS_SUCCESS)
     {
@@ -61,124 +77,67 @@ void Competition2023::Initialize()
     }
 
     limitSwitch = new pros::ADIDigitalIn('E');
-    pneumaticController = new pros::ADIDigitalOut('G');
-    leftWing = new pros::ADIDigitalOut('H');
+    climbController = new pros::ADIDigitalOut('G');
+    leftWingController = new pros::ADIDigitalOut('H');
 
-    imu = new ImuWrapper(17, left, right, 3);
+    imu = new pros::Imu(17);
+    odom = {};
+    odom.imu = imu;
+
+    lateralController.kP = 28;
+    lateralController.kD = 5;
+    lateralController.smallError = 1;
+    lateralController.smallErrorTimeout = 100;
+    lateralController.largeError = 3;
+    lateralController.largeErrorTimeout = 500;
+    lateralController.slew = 2;
+
+    angularController.kP = 4;
+    angularController.kD = 40;
+    angularController.smallError = 1;
+    angularController.smallErrorTimeout = 100;
+    angularController.largeError = 3;
+    angularController.largeErrorTimeout = 500;
+    angularController.slew = 0;
+
+    chassis = new lemlib::Chassis(*driveTrain, lateralController, angularController, odom);
+
+    printf("Init done\n");
 }
 
-static bool isNextToGoal = true;
+void screen() {
+    // loop forever
+    while (true) {
+        lemlib::Pose pose = comp_2023.chassis->getPose(); // get the current position of the robot
+        pros::lcd::print(0, "x: %f", pose.x); // print the x position
+        pros::lcd::print(1, "y: %f", pose.y); // print the y position
+        pros::lcd::print(2, "heading: %f", pose.theta); // print the heading
+        pros::delay(10);
+    }
+}
+
+static bool leftSide = true;
 
 void Competition2023::DoAutonomous()
 {
-    if (isNextToGoal)
+#if 1
+    chassis->calibrate();
+    pros::Task screenTask(screen);
+
+    if (leftSide)
     {
-        // Ram preloaded triball into goal
-        for (int i = 0; i < 3; i++)
-        {
-            left[i]->move(127);
-            right[i]->move(127);
-        }
-        pros::delay(450);
-        for (int i = 0; i < 3; i++)
-        {
-            left[i]->brake();
-            right[i]->brake();
-        }
+        chassis->setPose(55.0f, 55.0f, -45.0f);
+        leftWingController->set_value(HIGH);
 
-        imu->TurnLeft(25);
-
-        for (int i = 0; i < 3; i++)
-        {
-            left[i]->move(127);
-            right[i]->move(127);
-        }
-        pros::delay(550);
-        for (int i = 0; i < 3; i++)
-        {
-            left[i]->brake();
-            right[i]->brake();
-        }
+        chassis->moveTo(58.0f, 58.0f, 1000.0f);
+        chassis->turnTo(-30.0f, 0.0f, 1000.0f);
     }
     else
     {
-        while (!limitSwitch->get_value())
-        {
-            catapult->move(127);
-        }
-
-        catapult->move(0);
-
-        // Move forward to align the wing with the triball
-        for (int i = 0; i < 3; i++)
-        {
-            left[i]->move(127);
-            right[i]->move(127);
-        }
-        pros::delay(150);
-        for (int i = 0; i < 3; i++)
-        {
-            left[i]->brake();
-            right[i]->brake();
-        }
-
-        pros::delay(1000);
-
-        // Lower left wing
-        leftWing->set_value(HIGH);
-
-        imu->TurnRight(90);
-
-        leftWing->set_value(LOW);
-
-        for (int i = 0; i < 3; i++)
-        {
-            left[i]->move(127);
-            right[i]->move(127);
-        }
-        pros::delay(560);
-        for (int i = 0; i < 3; i++)
-        {
-            left[i]->brake();
-            right[i]->brake();
-        }
-
-        imu->TurnLeft(135);
-
-        for (int i = 0; i < 3; i++)
-        {
-            left[i]->move(-127);
-            right[i]->move(-127);
-        }
-        pros::delay(80);
-        for (int i = 0; i < 3; i++)
-        {
-            left[i]->brake();
-            right[i]->brake();
-        }
-
-        leftWing->set_value(HIGH);
-
-        imu->TurnLeft(20);
-
-        for (int i = 0; i < 3; i++)
-        {
-            left[i]->move(-64);
-            right[i]->move(-64);
-        }
-        pros::delay(300);
-        for (int i = 0; i < 3; i++)
-        {
-            left[i]->brake();
-            right[i]->brake();
-        }
-
-        pros::delay(1000);
-
-        leftWing->set_value(LOW);
     }
-
-    pros::delay(2);
+#else
+    catapult->move(95);
+#endif
 }
 
 bool catapultIsMoving = false;
@@ -204,15 +163,8 @@ void Competition2023::DoOpControl()
 
         if (catapultIsMoving && limitSwitch->get_value())
         {
-            catapult->move_velocity(0);
+            catapult->brake();
             catapultIsMoving = false;
-        }
-
-        if (controller->get_digital(DIGITAL_Y))
-        {
-            catapult->move(95);
-            pros::delay(250);
-            catapult->move(0);
         }
 
         if (controller->get_digital(DIGITAL_A) && !catapultIsMoving)
@@ -227,32 +179,39 @@ void Competition2023::DoOpControl()
             if (isFlinging)
                 catapult->move(95);
             else
-                catapult->move(0);
+                catapult->brake();
         }
 
         if (controller->get_digital(DIGITAL_B))
         {
             isFlinging = false;
             catapultIsMoving = false;
-            catapult->move(0);
+            catapult->brake();
+        }
+
+        if (controller->get_digital(DIGITAL_Y))
+        {
+            catapult->move(95);
+            pros::delay(400);
+            catapult->brake();
         }
 
         if (controller->get_digital(DIGITAL_UP))
         {
-            pneumaticController->set_value(HIGH);
+            climbController->set_value(HIGH);
         }
         else if (controller->get_digital(DIGITAL_DOWN))
         {
-            pneumaticController->set_value(LOW);
+            climbController->set_value(LOW);
         }
         
         if (controller->get_digital(DIGITAL_RIGHT))
         {
-            leftWing->set_value(HIGH);
+            leftWingController->set_value(HIGH);
         }
         else if (controller->get_digital(DIGITAL_LEFT))
         {
-            leftWing->set_value(LOW);
+            leftWingController->set_value(LOW);
         }
 
         if (controller->get_digital(DIGITAL_L2))

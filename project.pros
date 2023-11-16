@@ -4,6 +4,29 @@
         "project_name": "VexRobotics2023",
         "target": "v5",
         "templates": {
+            "LemLib": {
+                "location": "C:\\Users\\ilari\\AppData\\Roaming\\PROS\\templates\\LemLib@0.4.7",
+                "metadata": {
+                    "origin": "local"
+                },
+                "name": "LemLib",
+                "py/object": "pros.conductor.templates.local_template.LocalTemplate",
+                "supported_kernels": "^3.8.0",
+                "system_files": [
+                    "firmware\\LemLib.a",
+                    "include\\lemlib\\chassis\\odom.hpp",
+                    "include\\lemlib\\pose.hpp",
+                    "include\\lemlib\\util.hpp",
+                    "include\\lemlib\\chassis\\trackingWheel.hpp",
+                    "include\\lemlib\\pid.hpp",
+                    "include\\lemlib\\api.hpp",
+                    "include\\lemlib\\logger.hpp",
+                    "include\\lemlib\\chassis\\chassis.hpp"
+                ],
+                "target": "v5",
+                "user_files": [],
+                "version": "0.4.7"
+            },
             "kernel": {
                 "location": "C:\\Users\\ilari\\AppData\\Roaming\\PROS\\templates\\kernel@3.8.0",
                 "metadata": {
