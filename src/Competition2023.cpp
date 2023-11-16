@@ -34,7 +34,6 @@ void Competition2023::Initialize()
 {
     // Motor and button initialization goes here
     lcd->Initialize();
-    lcd->AddErrorText("Test text: 0x%x", 0xAAAAAAAA);
 
     vision = new pros::Vision(VISION_SYSTEM_PORT);
     if (errno != PROS_SUCCESS)
