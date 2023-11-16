@@ -83,13 +83,13 @@ void Competition2023::Initialize()
     odom = {};
     odom.imu = imu;
 
-    lateralController.kP = 28;
-    lateralController.kD = 5;
+    lateralController.kP = 25;
+    lateralController.kD = 6.25;
     lateralController.smallError = 1;
     lateralController.smallErrorTimeout = 100;
     lateralController.largeError = 3;
     lateralController.largeErrorTimeout = 500;
-    lateralController.slew = 2;
+    lateralController.slew = 4;
 
     angularController.kP = 4;
     angularController.kD = 40;
@@ -115,7 +115,7 @@ void screen() {
     }
 }
 
-static bool leftSide = true;
+static bool leftSide = false;
 
 void Competition2023::DoAutonomous()
 {
@@ -125,14 +125,22 @@ void Competition2023::DoAutonomous()
 
     if (leftSide)
     {
-        chassis->setPose(55.0f, 55.0f, -45.0f);
+        chassis->setPose(55.0f, 55.0f, -65.0f);
         leftWingController->set_value(HIGH);
 
-        chassis->moveTo(58.0f, 58.0f, 1000.0f);
+        chassis->moveTo(58.0f, 58.0f, TIMEOUT_MAX);
         chassis->turnTo(-30.0f, 0.0f, 1000.0f);
+        leftWingController->set_value(LOW);
+        chassis->moveTo(14.0f, 49.0f, TIMEOUT_MAX);
+        intake->set_reversed(true);
+        intake->move_voltage(12000);
     }
     else
     {
+        chassis->setPose(-55.0f, 55.0f, -155.0f);
+        chassis->moveTo(-62.0f, 42.0f, TIMEOUT_MAX);
+        chassis->turnTo(-60, 30, TIMEOUT_MAX);
+        chassis->moveTo(0.0f, -50.0f, 1000.0f);
     }
 #else
     catapult->move(95);
