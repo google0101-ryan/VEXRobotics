@@ -84,18 +84,18 @@ void Competition2023::Initialize()
     odom.imu = imu;
 
     lateralController.kP = 19;
-    lateralController.kD = 5;
+    lateralController.kD = 6;
     lateralController.smallError = 1;
     lateralController.smallErrorTimeout = 100;
     lateralController.largeError = 3;
     lateralController.largeErrorTimeout = 500;
     lateralController.slew = 2;
 
-    angularController.kP = 4;
-    angularController.kD = 40;
-    angularController.smallError = 1;
+    angularController.kP = 2.65;
+    angularController.kD = 9;
+    angularController.smallError = .1;
     angularController.smallErrorTimeout = 100;
-    angularController.largeError = 3;
+    angularController.largeError = .5;
     angularController.largeErrorTimeout = 500;
     angularController.slew = 0;
 
