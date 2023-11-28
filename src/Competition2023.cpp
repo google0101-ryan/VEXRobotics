@@ -4,6 +4,8 @@
 #include "pros/vision.hpp"
 #include "ImuWrapper.h"
 #include "lemlib/api.hpp"
+#include "lemlib/logger/stdout.hpp"
+#include "pros/misc.h"
 
 // Competition class for 2023
 // Use this as an example, do not include in your final project
@@ -22,11 +24,10 @@ private:
     pros::ADIDigitalOut* climbController, *leftWingController;
     pros::Imu* imu;
     pros::MotorGroup* leftGroup, *rightGroup;
-    lemlib::Drivetrain_t* driveTrain;
-    lemlib::OdomSensors_t odom;
-    lemlib::ChassisController_t lateralController, angularController;
-public:
+    lemlib::Drivetrain* drivetrain;
+    lemlib::ControllerSettings* linearController, *angularController;
     lemlib::Chassis* chassis;
+public:
     virtual void Initialize();
     virtual void DoAutonomous();
     virtual void DoOpControl();
@@ -63,12 +64,7 @@ void Competition2023::Initialize()
     leftGroup = new pros::MotorGroup({*left[0], *left[1], *left[2]});
     rightGroup = new pros::MotorGroup({*right[0], *right[1], *right[2]});
 
-    driveTrain = new lemlib::Drivetrain_t;
-    driveTrain->leftMotors = leftGroup;
-    driveTrain->rightMotors = rightGroup;
-    driveTrain->rpm = 360;
-    driveTrain->trackWidth = 10;
-    driveTrain->wheelDiameter = 3.125;
+    drivetrain = new lemlib::Drivetrain(leftGroup, rightGroup, 10, lemlib::Omniwheel::NEW_325, 360, 2);
 
     if (errno != PROS_SUCCESS)
     {
@@ -80,26 +76,12 @@ void Competition2023::Initialize()
     leftWingController = new pros::ADIDigitalOut('H');
 
     imu = new pros::Imu(17);
-    odom = {};
-    odom.imu = imu;
+    
+    linearController = new lemlib::ControllerSettings(10, 30, 1, 100, 3, 500, 20);
+    angularController = new lemlib::ControllerSettings(2, 10, 1, 100, 3, 500, 20);
 
-    lateralController.kP = 19;
-    lateralController.kD = 6;
-    lateralController.smallError = 1;
-    lateralController.smallErrorTimeout = 100;
-    lateralController.largeError = 3;
-    lateralController.largeErrorTimeout = 500;
-    lateralController.slew = 4;
-
-    angularController.kP = 2.65;
-    angularController.kD = 9;
-    angularController.smallError = .1;
-    angularController.smallErrorTimeout = 100;
-    angularController.largeError = .5;
-    angularController.largeErrorTimeout = 500;
-    angularController.slew = 0;
-
-    chassis = new lemlib::Chassis(*driveTrain, lateralController, angularController, odom);
+    chassis = new lemlib::Chassis(*drivetrain, *linearController, *angularController, lemlib::OdomSensors(nullptr, nullptr, nullptr, nullptr, imu));
+    chassis->calibrate();
 
     printf("Init done\n");
 }
@@ -107,11 +89,6 @@ void Competition2023::Initialize()
 void screen() {
     // loop forever
     while (true) {
-        lemlib::Pose pose = comp_2023.chassis->getPose(); // get the current position of the robot
-        pros::lcd::print(0, "x: %f", pose.x); // print the x position
-        pros::lcd::print(1, "y: %f", pose.y); // print the y position
-        pros::lcd::print(2, "heading: %f", pose.theta); // print the heading
-        pros::delay(10);
     }
 }
 
@@ -119,28 +96,16 @@ static bool leftSide = false;
 
 void Competition2023::DoAutonomous()
 {
-#if 1
-    chassis->calibrate();
-    pros::Task screenTask(screen);
+    chassis->setPose(0, 0, 0);
+    chassis->moveToOld(0, -10, 0.0f, INT32_MAX);
 
+#if 1
     if (leftSide)
     {
-        chassis->setPose(55.0f, 55.0f, -65.0f);
-        leftWingController->set_value(HIGH);
-
-        chassis->moveTo(58.0f, 58.0f, TIMEOUT_MAX);
-        chassis->turnTo(-30.0f, 0.0f, 1000.0f);
-        leftWingController->set_value(LOW);
-        chassis->moveTo(14.0f, 49.0f, TIMEOUT_MAX);
-        intake->set_reversed(true);
-        intake->move_voltage(12000);
     }
     else
     {
-        chassis->setPose(-55.0f, 55.0f, -155.0f);
-        chassis->moveTo(-62.0f, 42.0f, TIMEOUT_MAX);
-        chassis->turnTo(-60, 30, TIMEOUT_MAX);
-        chassis->moveTo(0.0f, -50.0f, 1000.0f);
+
     }
 #else
     catapult->move(95);
