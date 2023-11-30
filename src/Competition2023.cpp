@@ -22,10 +22,9 @@ private:
     pros::ADIDigitalOut* climbController, *leftWingController;
     pros::Imu* imu;
     pros::MotorGroup* leftGroup, *rightGroup;
-    lemlib::Drivetrain_t* driveTrain;
-    lemlib::OdomSensors_t odom;
-    lemlib::ChassisController_t lateralController, angularController;
+    
 public:
+    lemlib::Drivetrain* drivetrain;
     lemlib::Chassis* chassis;
     virtual void Initialize();
     virtual void DoAutonomous();
@@ -58,18 +57,10 @@ void Competition2023::Initialize()
     catapult = new pros::Motor(15, MOTOR_GEARSET_36, true);
     catapult->set_brake_mode(pros::motor_brake_mode_e_t::E_MOTOR_BRAKE_COAST);
     catapult->move_absolute(0.0, 100);
-    intake = new pros::Motor(16);
+    intake = new pros::Motor(16, false);
 
     leftGroup = new pros::MotorGroup({*left[0], *left[1], *left[2]});
     rightGroup = new pros::MotorGroup({*right[0], *right[1], *right[2]});
-
-    driveTrain = new lemlib::Drivetrain_t;
-    driveTrain->leftMotors = leftGroup;
-    driveTrain->rightMotors = rightGroup;
-    driveTrain->rpm = 360;
-    driveTrain->trackWidth = 10;
-    driveTrain->wheelDiameter = 3.125;
-
     if (errno != PROS_SUCCESS)
     {
         printf("ERROR Initializing one or more motors!\n");
@@ -80,27 +71,48 @@ void Competition2023::Initialize()
     leftWingController = new pros::ADIDigitalOut('H');
 
     imu = new pros::Imu(17);
-    odom = {};
-    odom.imu = imu;
 
-    lateralController.kP = 19;
-    lateralController.kD = 6;
-    lateralController.smallError = 1;
-    lateralController.smallErrorTimeout = 100;
-    lateralController.largeError = 3;
-    lateralController.largeErrorTimeout = 500;
-    lateralController.slew = 2;
+    lemlib::Drivetrain drivetrain{
+        leftGroup,  //left motor group
+        rightGroup, //right motor group
+        10.5,       //drivebase width
+        3.25,       //wheel size
+        360,        //rpm
+        2           //default chase power (defaults 2 if all omni, 8 if traction)
+    };
+    
+    lemlib::OdomSensors odom{
+        nullptr,    //vertical tracking wheel 1 - we don't have
+        nullptr,    //vertical tracking wheel 2 - we don't have
+        nullptr,    //horizontal tracking wheel 1 - we don't have
+        nullptr,    //horizontal tracking wheel 2 - we don't have
+        imu         //intertial sensor
+    };
 
-    angularController.kP = 2.65;
-    angularController.kD = 9;
-    angularController.smallError = .1;
-    angularController.smallErrorTimeout = 100;
-    angularController.largeError = .5;
-    angularController.largeErrorTimeout = 500;
-    angularController.slew = 0;
+    lemlib::ControllerSettings lateralController{
+        17,         //kP
+        30,          //kD
+        .1,         //SmallError
+        100000,        //SmallErrorTimout
+        .5,         //Large Error
+        500000,        //Large Error Timeout
+        0           //Slew
+    };
+  
+    lemlib::ControllerSettings angularController{
+        5.2,       //KP
+        16.6,          //KD
+        .1,         //SmallError
+        10000,        //SmallErrorTimout
+        .5,         //LARGE ERROR
+        50000,        //LARGE ERROR TIMEOUT
+        0           //Slew
+    };
+  
 
-    chassis = new lemlib::Chassis(*driveTrain, lateralController, angularController, odom);
-
+    chassis = new lemlib::Chassis(drivetrain, lateralController, angularController, odom);
+    chassis->calibrate();
+    
     printf("Init done\n");
 }
 
@@ -115,28 +127,17 @@ void screen() {
     }
 }
 
-static bool leftSide = true;
+static bool leftSide = false;
 
 void Competition2023::DoAutonomous()
 {
-#if 1
-    chassis->calibrate();
     pros::Task screenTask(screen);
+    chassis->setPose(0,0,0);
+    chassis->moveTo(0,-20,0,5000,false);
+    //chassis->turnTo(900,0,500000,false);
+  // void lemlib::Chassis::turnTo(float x, float y, int timeout, bool forwards = true, float maxSpeed = (127.0F), bool async = true)
 
-    if (leftSide)
-    {
-        chassis->setPose(55.0f, 55.0f, -45.0f);
-        leftWingController->set_value(HIGH);
 
-        chassis->moveTo(58.0f, 58.0f, 1000.0f);
-        chassis->turnTo(-30.0f, 0.0f, 1000.0f);
-    }
-    else
-    {
-    }
-#else
-    catapult->move(95);
-#endif
 }
 
 bool catapultIsMoving = false;
@@ -215,13 +216,13 @@ void Competition2023::DoOpControl()
 
         if (controller->get_digital(DIGITAL_L2))
         {
-            intake->set_reversed(false);
-            intake->move_voltage(12000);
+            //intake->set_reversed(true);
+            intake->move_voltage(-12000);
         }
         else if (controller->get_digital(DIGITAL_L1))
         {
-            intake->set_reversed(true);
-            intake->move_voltage(12000);
+           //intake->set_reversed(true);
+           intake->move_voltage(12000);
         }
         else
         {
