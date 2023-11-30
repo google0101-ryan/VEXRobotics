@@ -11,6 +11,8 @@
 // Use this as an example, do not include in your final project
 // Make sure you only have one competition file in your project
 
+lemlib::Chassis* chassis;
+
 class Competition2023 : public Competition
 {
 private:
@@ -26,7 +28,6 @@ private:
     pros::MotorGroup* leftGroup, *rightGroup;
 public:
     lemlib::Drivetrain* drivetrain;
-    lemlib::Chassis* chassis;
 public:
     virtual void Initialize();
     virtual void DoAutonomous();
@@ -95,9 +96,9 @@ void Competition2023::Initialize()
         17,         //kP
         30,          //kD
         .1,         //SmallError
-        100000,        //SmallErrorTimout
+        100,        //SmallErrorTimout
         .5,         //Large Error
-        500000,        //Large Error Timeout
+        500,        //Large Error Timeout
         0           //Slew
     };
   
@@ -105,9 +106,9 @@ void Competition2023::Initialize()
         5.2,       //KP
         16.6,          //KD
         .1,         //SmallError
-        10000,        //SmallErrorTimout
+        100,        //SmallErrorTimout
         .5,         //LARGE ERROR
-        50000,        //LARGE ERROR TIMEOUT
+        500,        //LARGE ERROR TIMEOUT
         0           //Slew
     };
   
@@ -121,6 +122,11 @@ void Competition2023::Initialize()
 void screen() {
     // loop forever
     while (true) {
+        lemlib::Pose pose = chassis->getPose(); // get the current position of the robot
+        pros::lcd::print(0, "x: %f", pose.x); // print the x position
+        pros::lcd::print(1, "y: %f", pose.y); // print the y position
+        pros::lcd::print(2, "heading: %f", pose.theta); // print the heading
+        pros::delay(10);
     }
 }
 
@@ -129,9 +135,15 @@ static bool leftSide = false;
 void Competition2023::DoAutonomous()
 {
     pros::Task screenTask(screen);
-    chassis->setPose(0,0,0);
-    chassis->moveTo(0,-20,0,5000,false);
-    //chassis->turnTo(900,0,500000,false);
+    chassis->setPose(lemlib::Pose(-60, -12));
+    intake->move(127);
+    chassis->moveTo(-60, -9, chassis->getPose().theta, INT32_MAX, true, 0.0f, 0.6f, 120.f);
+    chassis->moveTo(-60, -46, chassis->getPose().theta, INT32_MAX, false);
+    chassis->turnTo(-500, 500, INT32_MAX);
+    leftWingController->set_value(HIGH);
+    chassis->moveTo(-45, -60, -45.f, INT32_MAX, false);
+    chassis->moveTo(-47, -58, -47.f, INT32_MAX, true);
+    chassis->turnTo(500, chassis->getPose().y, INT32_MAX);
   // void lemlib::Chassis::turnTo(float x, float y, int timeout, bool forwards = true, float maxSpeed = (127.0F), bool async = true)
 }
 
