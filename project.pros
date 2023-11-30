@@ -5,7 +5,7 @@
         "target": "v5",
         "templates": {
             "LemLib": {
-                "location": "C:\\Users\\GC-Robotics\\AppData\\Roaming\\PROS\\templates\\LemLib@0.5.0-rc1",
+                "location": "C:\\Users\\ilari\\AppData\\Roaming\\PROS\\templates\\LemLib@0.5.0-rc1",
                 "metadata": {
                     "origin": "local"
                 },

@@ -4,6 +4,8 @@
 #include "pros/vision.hpp"
 #include "ImuWrapper.h"
 #include "lemlib/api.hpp"
+#include "lemlib/logger/stdout.hpp"
+#include "pros/misc.h"
 
 // Competition class for 2023
 // Use this as an example, do not include in your final project
@@ -22,10 +24,10 @@ private:
     pros::ADIDigitalOut* climbController, *leftWingController;
     pros::Imu* imu;
     pros::MotorGroup* leftGroup, *rightGroup;
-    
 public:
     lemlib::Drivetrain* drivetrain;
     lemlib::Chassis* chassis;
+public:
     virtual void Initialize();
     virtual void DoAutonomous();
     virtual void DoOpControl();
@@ -71,7 +73,7 @@ void Competition2023::Initialize()
     leftWingController = new pros::ADIDigitalOut('H');
 
     imu = new pros::Imu(17);
-
+	
     lemlib::Drivetrain drivetrain{
         leftGroup,  //left motor group
         rightGroup, //right motor group
@@ -119,11 +121,6 @@ void Competition2023::Initialize()
 void screen() {
     // loop forever
     while (true) {
-        lemlib::Pose pose = comp_2023.chassis->getPose(); // get the current position of the robot
-        pros::lcd::print(0, "x: %f", pose.x); // print the x position
-        pros::lcd::print(1, "y: %f", pose.y); // print the y position
-        pros::lcd::print(2, "heading: %f", pose.theta); // print the heading
-        pros::delay(10);
     }
 }
 
@@ -136,8 +133,6 @@ void Competition2023::DoAutonomous()
     chassis->moveTo(0,-20,0,5000,false);
     //chassis->turnTo(900,0,500000,false);
   // void lemlib::Chassis::turnTo(float x, float y, int timeout, bool forwards = true, float maxSpeed = (127.0F), bool async = true)
-
-
 }
 
 bool catapultIsMoving = false;
