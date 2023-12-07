@@ -137,13 +137,28 @@ void Competition2023::DoAutonomous()
     pros::Task screenTask(screen);
     chassis->setPose(lemlib::Pose(-60, -12));
     intake->move(127);
-    chassis->moveTo(-60, -9, chassis->getPose().theta, INT32_MAX, true, 0.0f, 0.6f, 120.f);
-    chassis->moveTo(-60, -46, chassis->getPose().theta, INT32_MAX, false);
-    chassis->turnTo(-500, 500, INT32_MAX);
+    // Move forward and grab triball
+    chassis->moveTo(-60, -9, chassis->getPose().theta, 5000, true, 0.0f, 0.6f, 120.f);
+    // Move backwards to bar
+    chassis->moveTo(-60, -46, chassis->getPose().theta, 5000, false);
+    // Turn towards goal
+    chassis->turnTo(-500, 500, 3000, true, 127.0f, false);
+    // Lower wings
     leftWingController->set_value(HIGH);
-    chassis->moveTo(-45, -60, -45.f, INT32_MAX, false);
-    chassis->moveTo(-47, -58, -47.f, INT32_MAX, true);
-    chassis->turnTo(500, chassis->getPose().y, INT32_MAX);
+    // Move into position to knock the triball free
+    chassis->moveTo(-53.0f, -56.5f, -40.0f, INT32_MAX, false);
+    // Turn to heading
+    chassis->moveTo(-55.8f, -54.5f, -78.7f, 3000, true, 0.0f, 0.6f, 127.0f, false);
+    chassis->moveTo(-30.0f, -63.0f, -86.0f, 3000, false, 0.0f, 0.6f, 127.0f, false);
+    leftWingController->set_value(LOW);
+    chassis->moveTo(-37.3f, -62.3f, -82.0f, 3000);
+    chassis->turnTo(500, -62.3f, 3000);
+
+    leftGroup->move_voltage(12000);
+    rightGroup->move_voltage(12000);
+    pros::delay(1000);
+    leftGroup->move_voltage(0);
+    rightGroup->move_voltage(0);
   // void lemlib::Chassis::turnTo(float x, float y, int timeout, bool forwards = true, float maxSpeed = (127.0F), bool async = true)
 }
 
