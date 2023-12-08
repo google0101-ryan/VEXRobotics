@@ -130,10 +130,12 @@ void screen() {
     }
 }
 
-static bool leftSide = false;
+
 
 void Competition2023::DoAutonomous()
 {
+    static bool defensiveSide = false;
+    if (defensiveSide = true){
     pros::Task screenTask(screen);
     chassis->setPose(lemlib::Pose(-60, -12));
     intake->move(127);
@@ -159,6 +161,15 @@ void Competition2023::DoAutonomous()
     pros::delay(1000);
     leftGroup->move_voltage(0);
     rightGroup->move_voltage(0);
+    }
+    static bool offensiveSide = true;
+    if (offensiveSide = true){
+    chassis->setPose(lemlib::Pose(55, -55));
+    //Go Backward to triball
+     chassis->moveTo(-55, -1, chassis->getPose().theta, 5000, true, 0.0f, 0.6f, 120.f);
+    }
+    
+    
   // void lemlib::Chassis::turnTo(float x, float y, int timeout, bool forwards = true, float maxSpeed = (127.0F), bool async = true)
 }
 
@@ -170,7 +181,9 @@ bool isFlinging = false;
 void Competition2023::DoOpControl()
 {
     pros::Controller* controller = new pros::Controller(CONTROLLER_MASTER);
+     pros::Task screenTask(screen);
     while (true)
+    
     {
         int fwd =  controller->get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
         int turn = controller->get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
