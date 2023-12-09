@@ -134,8 +134,8 @@ void screen() {
 
 void Competition2023::DoAutonomous()
 {
-    static bool defensiveSide = false;
-    if (defensiveSide = true){
+    static bool defensiveSide = true;
+    if (defensiveSide){
     pros::Task screenTask(screen);
     chassis->setPose(lemlib::Pose(-60, -12));
     intake->move(127);
@@ -148,25 +148,35 @@ void Competition2023::DoAutonomous()
     // Lower wings
     leftWingController->set_value(HIGH);
     // Move into position to knock the triball free
-    chassis->moveTo(-53.0f, -56.5f, -40.0f, INT32_MAX, false);
+    chassis->moveTo(-53.0, -56.5, -40.0, 3000, false);
     // Turn to heading
-    chassis->moveTo(-55.8f, -54.5f, -78.7f, 3000, true, 0.0f, 0.6f, 127.0f, false);
-    chassis->moveTo(-30.0f, -63.0f, -86.0f, 3000, false, 0.0f, 0.6f, 127.0f, false);
+    chassis->moveTo(-55.8, -54.5, -78.7, 3000, true);
+    chassis->moveTo(-30.0, -63.0, -86.0, 3000, false);
     leftWingController->set_value(LOW);
-    chassis->moveTo(-37.3f, -62.3f, -82.0f, 3000);
-    chassis->turnTo(500, -62.3f, 3000);
-
-    leftGroup->move_voltage(12000);
-    rightGroup->move_voltage(12000);
-    pros::delay(1000);
-    leftGroup->move_voltage(0);
-    rightGroup->move_voltage(0);
+    chassis->moveTo(900, -62.3, chassis->getPose().theta, 300, false);
+    chassis->moveTo(-37.3, -62.3, -82.0, 3000);
+    chassis->turnTo(500, -62.3, 3000);
+    intake->move(0);
+    chassis->moveTo(900, -62.3, chassis->getPose().theta, 300, true);
     }
-    static bool offensiveSide = true;
-    if (offensiveSide = true){
-    chassis->setPose(lemlib::Pose(55, -55));
-    //Go Backward to triball
-     chassis->moveTo(-55, -1, chassis->getPose().theta, 5000, true, 0.0f, 0.6f, 120.f);
+
+
+    static bool offensiveSide = false;
+    if (offensiveSide){
+     chassis->setPose(60, -48,-135);
+     //Go Backward to triball
+     chassis->moveTo(52, -56, chassis->getPose().theta, 5000, true,0,0,127);
+    //Wing down and turn to bar
+     chassis->moveTo(60, -48, chassis->getPose().theta, 5000, false,0,0,127);
+      leftWingController->set_value(HIGH);
+      pros::delay(200);
+    chassis->turnTo(60, -180, 2000,60);
+    chassis->turnTo(60, 180, 2000,60);
+     leftWingController->set_value(LOW);
+     //Drive to bar
+    chassis->moveTo(60, -12,0, 5000, true,0,0,127);
+    intake->move(-127);
+    
     }
     
     
